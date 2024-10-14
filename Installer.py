@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt, QRect
 from appdirs import AppDirs
 import requests
-import LOGIN
 
 APP_NAME = 'JournalTrade'
 APP_AUTHOR = '.JTbyY'
@@ -167,7 +166,6 @@ class InstallerWindow(QMainWindow):
 
         self.resize_margin = button_layout.geometry().height()
 
-        self.setLayout(layout)
         self.center_window()
 
     def setup_button_layout(self):
