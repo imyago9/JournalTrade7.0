@@ -1,33 +1,30 @@
+import os
 from datetime import datetime
+
+from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QDate, Qt, pyqtSignal
 import pandas as pd
-from SQL import get_trade_note, insert_daily_note, update_trade_note
+from SQL import get_trade_note, insert_daily_note, update_trade_note, get_trades_for_account, insert_trade
 
 
 class CustomCalendar(QWidget):
     day_clicked = pyqtSignal(int, str)
-    def __init__(self, account_type='NinjaTrader', parent=None):
-        super(CustomCalendar, self).__init__(parent)
-        self.setStyleSheet("""background-color: #222222;""")
-        self.setStyleSheet("""color: white;""")
 
-        self.layout = QVBoxLayout(self)
-        self.navigation_layout = QHBoxLayout()
+    def __init__(self, account_type='NinjaTrader', parent=None, money_visible=False):
+        super(CustomCalendar, self).__init__(parent)
         self.account_type = account_type
         self.account_id = None
+        self.money_visible = money_visible
 
-        self.prev_button = QPushButton("<", self)
-        self.prev_button.clicked.connect(self.prevMonth)
-        self.navigation_layout.addWidget(self.prev_button)
+        self.layout = QVBoxLayout(self)
 
-        self.current_month_label = QLabel(self)
-        self.navigation_layout.addWidget(self.current_month_label)
+        self.date_edit_layout = QHBoxLayout()
+        self.init_dateedits()
+        self.layout.addLayout(self.date_edit_layout)
 
-        self.next_button = QPushButton(">", self)
-        self.next_button.clicked.connect(self.nextMonth)
-        self.navigation_layout.addWidget(self.next_button)
-
+        self.navigation_layout = QHBoxLayout()
+        self.init_navigation()
         self.layout.addLayout(self.navigation_layout)
 
         self.calendar_layout = QGridLayout()
@@ -45,11 +42,130 @@ class CustomCalendar(QWidget):
         self.layout.setStretch(0, 1)
         self.layout.setStretch(1, 6)
 
+    def init_dateedits(self):
+        self.fde = QDateEdit()
+        self.fde.setCalendarPopup(True)
+        self.fde.setStyleSheet("""QDateEdit {
+                                background-color: #222222;
+                                color: white;
+                                border: 1px solid #c3dc9b;
+                                border-radius: 4px;
+                            }
+                            
+                            QDateEdit::drop-down {
+                                background-color: #c3dc9b;
+                                border: none;
+                                subcontrol-position: left;
+                            }
+                            
+                            QDateEdit::down-arrow {
+                                image: none;
+                                background-color: #c3dc9b;
+                                border: 1px solid #c3dc9b;
+                                border-radius: 5px;
+                            }
+                            QDateEdit::down-arrow:hover {
+                                image: none;
+                                background-color: #222222;
+                                border: 1px solid #222222;
+                                border-radius: 5px;
+                            }
+                            
+                            QCalendarWidget QWidget#qt_calendar_navigationbar {
+                                background-color: #222222;
+                                color: white;
+                            }
+                            
+                             QCalendarWidget QToolButton {
+                                background-color: #222222;
+                                color: white;
+                            }
+                            
+                            QCalendarWidget QToolButton:hover {
+                                background-color: #333333;
+                            }
+                            
+                            QCalendarWidget QAbstractItemView {
+                                selection-background-color: #c3dc9b;
+                                selection-color: black;
+                            }""")
+        self.sde = QDateEdit()
+        self.sde.setCalendarPopup(True)
+        self.sde.setStyleSheet("""QDateEdit {
+                                background-color: #222222;
+                                color: white;
+                                border: 1px solid #c3dc9b;
+                                border-radius: 4px;
+                            }
+                            
+                            QDateEdit::drop-down {
+                                background-color: #c3dc9b;
+                                border: none;
+                                subcontrol-position: right;
+                            }
+                            
+                            QDateEdit::down-arrow {
+                                image: none;
+                                background-color: #c3dc9b;
+                                border: 1px solid #c3dc9b;
+                                border-radius: 5px;
+                            }
+                            QDateEdit::down-arrow:hover {
+                                image: none;
+                                background-color: #222222;
+                                border: 1px solid #222222;
+                                border-radius: 5px;
+                            }
+                            
+                            QCalendarWidget QWidget#qt_calendar_navigationbar {
+                                background-color: #222222;
+                                color: white;
+                            }
+                            
+                             QCalendarWidget QToolButton {
+                                background-color: #222222;
+                                color: white;
+                            }
+                            
+                            QCalendarWidget QToolButton:hover {
+                                background-color: #333333;
+                            }
+                            
+                            QCalendarWidget QAbstractItemView {
+                                selection-background-color: #c3dc9b;
+                                selection-color: black;
+                            }""")
+        self.date_edit_layout.addStretch()
+        sd_label = QLabel('Start Date')
+        sd_label.setStyleSheet('border: none; color: white;')
+        ed_label = QLabel('End Date')
+        ed_label.setStyleSheet('border: none; color: white;')
+        self.date_edit_layout.addWidget(sd_label)
+        self.date_edit_layout.addWidget(self.fde)
+        self.date_edit_layout.addWidget(self.sde)
+        self.date_edit_layout.addWidget(ed_label)
+        self.date_edit_layout.addStretch()
+
+    def init_navigation(self):
+
+        self.prev_button = QPushButton("<", self)
+        self.prev_button.clicked.connect(self.prevMonth)
+        self.navigation_layout.addWidget(self.prev_button)
+
+        self.current_month_label = QLabel(self)
+        self.current_month_label.setStyleSheet('border: none; color: white;')
+        self.navigation_layout.addWidget(self.current_month_label)
+
+        self.next_button = QPushButton(">", self)
+        self.next_button.clicked.connect(self.nextMonth)
+        self.navigation_layout.addWidget(self.next_button)
+
     def initUI(self):
         days_of_week = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", 'Sun']
 
         for i, day in enumerate(days_of_week):
             day_label = QLabel(day)
+            day_label.setStyleSheet('border: none; color: white;')
             day_label.setAlignment(Qt.AlignCenter)
             day_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             self.calendar_layout.addWidget(day_label, 0, i)
@@ -78,12 +194,22 @@ class CustomCalendar(QWidget):
             date_label.setText("")
             profit_label.setText("")
             trade_label.setText("")
+            date_label.parent().setStyleSheet("""
+                                border: none;
+                                border-radius: none;
+                                background-color: none;
+                            """)
 
         row = 1
         col = day_of_week
         while date.month() == month:
             if col < 7:
                 self.dates[(row, col)][0].setText(str(date.day()))
+                self.dates[(row, col)][0].parent().setStyleSheet("""
+                                border: 2px solid #c3dc9b;
+                                border-radius: 5px;
+                                background-color: #333333;
+                            """)
                 col += 1
             date = date.addDays(1)
             if col >= 7:
@@ -98,9 +224,10 @@ class CustomCalendar(QWidget):
                         date_label.setStyleSheet("color: #8f7b7b; border: none;")
                     else:
                         profit_color = '#c3dc9b' if int(profit) > 0 else ('#ff4c4c' if int(profit) < 0 else 'white')
+                        profit = abs(profit) if self.money_visible else '---'
                         date_label.setText(str(day))
                         date_label.setStyleSheet("color: white; border: none;")
-                        profit_label.setText(f'{abs(profit)}')
+                        profit_label.setText(f'{profit}')
                         profit_label.setStyleSheet(f"color: {profit_color}; font-weight: bold; border: none;")
                         trades_label.setText(f"{trades}'Ts")
                         trades_label.setStyleSheet("color: white; border: none;")
@@ -153,14 +280,17 @@ class CustomCalendar(QWidget):
         self.setDate(self.current_date.year(), self.current_date.month())
         self.update_calendar(self.account_data)
 
+    def wheelEvent(self, event):
+        # Check the direction of the scroll
+        if event.angleDelta().y() > 0:
+            self.prevMonth()  # Scroll up: Go to the previous month
+        else:
+            self.nextMonth()  # Scroll down: Go to the next month
+
+
 class ClickableFrame(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("""
-            border: 2px solid #c3dc9b;
-            border-radius: 5px;
-            background-color: #333333;
-        """)
         layout = QVBoxLayout()
         self.date_label = QLabel("")
         self.date_label.setStyleSheet("border: none;")
@@ -171,7 +301,6 @@ class ClickableFrame(QFrame):
         self.profit_value.setStyleSheet("border: none;")
         self.profit_value.setAlignment(Qt.AlignCenter)
         self.profit_value.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
         self.trade_number = QLabel("")
         self.trade_number.setStyleSheet("border: none;")
         self.trade_number.setAlignment(Qt.AlignCenter)
@@ -188,14 +317,15 @@ class ClickableFrame(QFrame):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
         try:
-                parent = self.parent()
-                parent.day_clicked.emit(parent.account_id, str(f'{parent.current_date.year()}-{parent.current_date.month()}-{int(self.date_label.text())}'))
+            parent = self.parent()
+            parent.day_clicked.emit(parent.account_id,
+                                    str(f'{parent.current_date.year()}-{parent.current_date.month():02d}-{int(self.date_label.text()):02d}'))
         except Exception as e:
             print(f'Failed mouse press event: {e}')
 
 
 class ClickableLabel(QLabel):
-    def __init__(self, parent=None, type=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.type = type
         self.setAlignment(Qt.AlignCenter)
@@ -205,14 +335,7 @@ class ClickableLabel(QLabel):
         super().mousePressEvent(event)
         try:
             if self.pixmap() is not None:
-                if self.type == 'ti_ss':
-                    self.parent().set_screenshot_first_stack()
-            if self.type == 'day_label':
-                day = int(self.text())
-                custom_calendar = self.parent()
-                if custom_calendar:
-                    custom_calendar.day_clicked.emit(custom_calendar.account_id,
-                                                QDate(custom_calendar.current_date.year(), custom_calendar.current_date.month(), day))
+                self.parent().set_screenshot_first_stack()
         except Exception as e:
             print(f'Failed mouse press event: {e}')
 
@@ -237,7 +360,8 @@ class LimitedTextEdit(QTextEdit):
 
 
 class CustomNoteView(QWidget):
-    go_back_button_pressed = pyqtSignal(QDate, QDate)
+    go_back_button_pressed = pyqtSignal()
+
     def __init__(self, parent=None, trade_id=None, account_id=None, date=None, type=None):
         super(CustomNoteView, self).__init__(parent)
         self.trade_id = trade_id
@@ -250,7 +374,6 @@ class CustomNoteView(QWidget):
         if self.account_id and self.note_date:
             self.server_note_id, self.server_note, self.server_created_at = get_trade_note(account_id=account_id,
                                                                                            date=date)
-
 
         self.setupView()
         if self.server_note is not None:
@@ -338,7 +461,7 @@ class CustomNoteView(QWidget):
 
             def emit_back_signal():
                 try:
-                    self.go_back_button_pressed.emit(self.first_date, self.second_date)
+                    self.go_back_button_pressed.emit()
                 except Exception as e:
                     print(f'Failed to emit back signal: {e}')
 
@@ -366,3 +489,198 @@ class CustomNoteView(QWidget):
 
     def get_note_text(self):
         return self.notes_entry_box.toPlainText()
+
+
+class FiledropFrame(QFrame):
+    trade_created = pyqtSignal(int)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.cancel_button = None
+        self.confirm_button = None
+        self.label = None
+        self.new_trades_to_insert_verification = False
+        self.grouped_trades_verification = False
+        self.new_trades_to_insert = None
+        self.grouped_trades = None
+        self.account_name = None
+        self.account_id = None
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            # Accept only if the file is a CSV
+            for url in event.mimeData().urls():
+                if url.toLocalFile().lower().endswith('.csv'):
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                file_path = url.toLocalFile()
+                if file_path.lower().endswith('.csv'):
+                    self.check_for_new_trades(file_path)
+                    event.acceptProposedAction()
+                else:
+                    self.setText("Only CSV files are allowed")
+        else:
+            event.ignore()
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        print('A beat do necklace')
+
+    def check_for_new_trades(self, file_name):
+        if not os.path.exists(file_name) or os.stat(file_name).st_size == 0:
+            print('Missing or empty data inside csv. Please import data as instructed and try again.')
+            return
+        new_trades = pd.read_csv(file_name)
+        required_columns = {
+            'Instrument': 'instrument',
+            'Account': 'account',
+            'Market pos.': 'direction',
+            'Qty': 'quantity',
+            'Entry price': 'entry_price',
+            'Exit price': 'exit_price',
+            'Entry time': 'entry_time',
+            'Exit time': 'exit_time',
+            'Profit': 'profit',
+            'Commission': 'com'
+        }
+        missing_columns = set(required_columns.keys()) - set(new_trades.columns)
+        if missing_columns:
+            self.label.setText(f'Missing required columns: {missing_columns}')
+            print(f'Missing required columns: {missing_columns}')
+            return
+
+        new_trades.rename(columns=required_columns, inplace=True)
+        new_trades = new_trades[list(required_columns.values())]
+
+        columns_to_modify = ['profit', 'com']
+        for column in columns_to_modify:
+            new_trades[column] = new_trades[column].astype(str).str.replace(r'[$,)]',
+                                                                            '', regex=True).str.replace(r'\(', '-',
+                                                                                                        regex=True)
+            new_trades[column] = new_trades[column].astype(float).round(2)
+
+        for column in ['entry_time', 'exit_time']:
+            new_trades[column] = pd.to_datetime(new_trades[column], errors='coerce')
+
+        new_trades = new_trades[new_trades['account'] == self.account_name]
+        if new_trades.empty:
+            self.label.setText('No trades found for this account.')
+            print(f"No trades found for account '{self.account_name}' in the CSV file.")
+            return
+
+        self.grouped_trades = group_trades_by_entry_time(new_trades)
+
+        existing_trades = get_trades_for_account(self.account_id)
+        if existing_trades:
+            # Convert existing trades to a DataFrame for easy comparison
+            existing_trades_df = pd.DataFrame(existing_trades)
+
+            # Compare entry times to find new trades
+            last_entry_time = existing_trades_df['entry_time'].max()
+            self.new_trades_to_insert = self.grouped_trades[self.grouped_trades['entry_time'] > last_entry_time]
+
+            if self.new_trades_to_insert.empty:
+                self.label.setText('No new trades to update.')
+                self.cancel_button.setVisible(True)
+                self.cancel_button.clicked.connect(self.cancel_button_pressed)
+                self.confirm_button.setVisible(True)
+                self.confirm_button.clicked.connect(self.confirm_button_pressed)
+                print("No new trades to update.")
+                print(existing_trades)
+            else:
+                self.label.setText(f'Found {len(self.new_trades_to_insert)} new trade(s) to insert.')
+                print(f"Found {len(self.new_trades_to_insert)} new trade(s) to insert.")
+                self.new_trades_to_insert_verification = True
+                self.cancel_button.setVisible(True)
+                self.confirm_button.setVisible(True)
+                self.confirm_button.clicked.connect(self.confirm_button_pressed)
+                self.cancel_button.clicked.connect(self.cancel_button_pressed)
+
+        else:
+            self.label.setText('Save trades for the first time?')
+            print('No existing trades found. Saving all trades as new trades.')
+            self.grouped_trades_verification = True
+            self.cancel_button.setVisible(True)
+            self.confirm_button.setVisible(True)
+            self.confirm_button.clicked.connect(self.confirm_button_pressed)
+            self.cancel_button.clicked.connect(self.cancel_button_pressed)
+
+    def confirm_button_pressed(self):
+        if self.new_trades_to_insert is not None and self.new_trades_to_insert_verification:
+            self.save_new_trades_to_db(self.new_trades_to_insert)
+            self.trade_created.emit(self.account_id)
+            self.new_trades_to_insert_verification = False
+            self.cancel_button.setVisible(False)
+            self.confirm_button.setVisible(False)
+        elif self.grouped_trades is not None and self.grouped_trades_verification:
+            self.save_new_trades_to_db(self.grouped_trades)
+            self.trade_created.emit(self.account_id)
+            self.grouped_trades_verification = False
+            self.cancel_button.setVisible(False)
+            self.confirm_button.setVisible(False)
+        else:
+            self.label.setText('Please select a valid csv file.')
+
+    def cancel_button_pressed(self):
+        self.label.setText('Drag csv file here to update trades.\n'
+                           '(Click to browse computer files.)')
+        self.new_trades_to_insert = None
+        self.new_trades_to_insert_verification = None
+        self.grouped_trades = None
+        self.grouped_trades_verification = None
+        self.cancel_button.setVisible(False)
+        self.confirm_button.setVisible(False)
+        self.cancel_button.disconnect()
+        self.confirm_button.disconnect()
+
+    def save_new_trades_to_db(self, grouped_trades):
+        try:
+            for _, trade in grouped_trades.iterrows():
+                instrument = trade['instrument'].split()[0]
+
+                entries = [(trade['entry_price'], trade['quantity'])]
+                exits = [(trade['exit_price'], trade['quantity'])]
+
+                trade_id = insert_trade(
+                    self.account_id,
+                    instrument,
+                    trade['direction'],
+                    entries,
+                    exits,
+                    trade['entry_time'],
+                    trade['exit_time'],
+                    trade['profit'],
+                    trade['com']
+                )
+
+                if trade_id:
+                    print(f"Trade ID {trade_id} inserted successfully for instrument {instrument}.")
+                else:
+                    print(f"Failed to insert trade for {instrument} at {trade['entry_time']}")
+
+        except Exception as e:
+            print(f"Error saving new trades: {e}")
+
+
+def group_trades_by_entry_time(data):
+    # Group by entry_time
+    grouped_data = data.groupby('entry_time').agg(
+        {
+            'exit_time': 'last',  # Take the last exit time
+            'instrument': 'first',  # Assuming all rows have the same instrument, take the first
+            'direction': 'first',  # Assuming direction is the same, take the first
+            'entry_price': lambda x: (x * data.loc[x.index, 'quantity']).sum() / data.loc[x.index, 'quantity'].sum(),
+            # Weighted average entry price
+            'exit_price': lambda x: (x * data.loc[x.index, 'quantity']).sum() / data.loc[x.index, 'quantity'].sum(),
+            # Weighted average exit price
+            'quantity': 'sum',  # Sum up the quantities
+            'profit': 'sum',  # Sum up the profit
+            'com': 'sum'  # Sum up the commissions
+        }
+    ).reset_index()
+
+    return grouped_data

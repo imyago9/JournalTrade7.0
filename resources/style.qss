@@ -1,6 +1,9 @@
 QMainWindow {
     background-color: #222222;
+    border: 5px solid #c3dc9b;
+    border-radius: 9px;
     color: white;
+    margin: -3px;
 }
 
 /* Style for push buttons */

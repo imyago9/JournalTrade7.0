@@ -57,9 +57,9 @@ class MainWindow(QMainWindow):
             self.setup_top_frame_buttons()
 
             self.top_frame_layout.addWidget(self.friends_view_button)
-            self.top_frame_layout.addWidget(self.accounts_list_button)
             self.top_frame_layout.addWidget(self.swtich_view_button)
-            self.top_frame_layout.addStretch(1)
+            self.top_frame_layout.addWidget(self.accounts_list_button)
+            self.top_frame_layout.addStretch()
             self.top_frame_layout.addWidget(self.minimize_button)
             self.top_frame_layout.addWidget(self.expand_shrink_button)
             self.top_frame_layout.addWidget(self.close_app_button)
@@ -75,8 +75,6 @@ class MainWindow(QMainWindow):
             self.expand_shrink_button = QPushButton('', clicked=self.toggle_window_size)
             self.close_app_button = QPushButton('', clicked=self.close)
 
-
-            self.accounts_list_button.setFixedWidth(int(self.top_frame.width() * 0.2))
 
             close_button_icon = QtGui.QIcon()
             close_button_icon.addPixmap(QtGui.QPixmap(resource_path("resources/close_icon.png")), QtGui.QIcon.Normal,
@@ -189,28 +187,26 @@ class MainWindow(QMainWindow):
     def toggle_accounts_popup(self):
         try:
             if self.accounts_popup is None or not self.accounts_popup.isVisible():
-                height = int(self.bottom_frame.height() * 0.8)
-                button_width = self.accounts_list_button.width()
+                height = int(self.top_frame.height())
+                width = int(self.top_frame.width() // 2)
                 if self.accounts_popup is None:
-                    self.accounts_popup = AccountsPopup(self, width=button_width, height=height)
+                    self.accounts_popup = AccountsPopup(self, width=width, height=height)
                     self.accounts_popup.account_changed.connect(self.account_selected)
-
-                button_pos = self.accounts_list_button.mapToGlobal(self.accounts_list_button.rect().bottomLeft())
-                self.accounts_popup.move(button_pos)
 
                 self.animate_accounts_popup(show=True)
                 self.personal_view.animate_new_trade_popup(show=False)
+                self.move_accounts_popup()
             else:
                 self.animate_accounts_popup(show=False)
         except Exception as e:
             print(f'Failed to toggle my accounts list: {e}')
+
 
     def account_selected(self, account_id, account_name, account_type):
         try:
             current_title = self.personal_view.top_frame_title.text()
             new_title = f"{account_name}"
             if current_title != new_title:
-                self.animate_accounts_popup(show=False)
                 self.personal_view.animate_new_trade_popup(show=False)
                 self.stack.setCurrentWidget(self.personal_view)
                 self.personal_view.current_account = account_name
@@ -218,11 +214,18 @@ class MainWindow(QMainWindow):
                 self.personal_view.account_type = account_type
                 self.personal_view.new_trade_popup = None
                 self.personal_view.top_frame_title.setText(new_title)
+                self.personal_view.disable_account_list_signal.connect(self.new_trade_toggles_accounts_popup_off)
                 self.personal_view.fetch_account_data(account_id)
+                self.animate_accounts_popup(show=False)
+                self.center_window()
             else:
                 print(f"Account {account_name} is already selected.")
         except Exception as e:
             print(f'Failed to update account data: {e}')
+
+    def new_trade_toggles_accounts_popup_off(self):
+        self.animate_accounts_popup(show=False)
+
 
     def animate_accounts_popup(self, show=True):
         try:
@@ -239,7 +242,7 @@ class MainWindow(QMainWindow):
                 self.account_animation.setStartValue(1)
                 self.account_animation.setEndValue(0)
                 self.account_animation.finished.connect(self.accounts_popup.hide)
-                self.accounts_popup.go_back_pressed()
+                self.accounts_popup.account_options_view()
             self.account_animation.start()
         except Exception as e:
             print(f'Failed to animate accounts pop up: {e}')
@@ -334,13 +337,17 @@ class MainWindow(QMainWindow):
         try:
             super().moveEvent(event)
             if self.accounts_popup is not None:
-                button_pos = self.accounts_list_button.mapToGlobal(self.accounts_list_button.rect().bottomLeft())
-                self.accounts_popup.move(button_pos)
+                self.move_accounts_popup()
             if self.personal_view.new_trade_popup is not None:
-                button_pos = self.personal_view.edit_button.mapToGlobal(self.personal_view.edit_button.rect().bottomLeft())
-                self.personal_view.new_trade_popup.move(button_pos)
+                self.personal_view.center_new_trade_popup()
         except Exception as e:
             print(f'Failed to move event: {e}')
+
+    def move_accounts_popup(self):
+        button_pos = self.accounts_list_button.mapToGlobal(self.accounts_list_button.rect().bottomLeft())
+        popup_x = button_pos.x() - int(self.accounts_list_button.width() * 2)
+        popup_y = button_pos.y()
+        self.accounts_popup.move(popup_x, popup_y)
 
 def resource_path(relative_path):
     try:

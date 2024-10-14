@@ -8,7 +8,7 @@ from SQL import verify_credentials, register_user
 from MainWindow import MainWindow
 
 
-class LoginWindow(QWidget):
+class  LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
 
@@ -155,7 +155,6 @@ class LoginWindow(QWidget):
         user_id = register_user(username, password)
         if user_id:
             QMessageBox.information(self, 'Success', 'Account created successfully')
-            print(user_id)
             self.show_login_fields()
         else:
             QMessageBox.warning(self, 'Error', 'Username already exists.')

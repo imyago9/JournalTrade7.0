@@ -304,7 +304,7 @@ class ManualNewTradePopup(QDialog):
             profit_zone = int(self.profit_zone_entry.currentText())
 
             # Check if all fields are filled out
-            if not all([instrument, direction, entries, exits, entry_time, exit_time, profit, commission]):
+            if not all([instrument, direction, entries, exits, entry_time, exit_time, profit]):
                 print(f"All fields must be filled out. {instrument}, {direction}, {entries}, {exits}, {entry_time}, {exit_time}, {profit}, {commission}, {strength}, {basetime}, {freshness}, {trend}, {curve}, {profit_zone}")
                 return
 
@@ -382,12 +382,11 @@ class ManualNewTradePopup(QDialog):
         self.adjustSize()
         super().resizeEvent(event)
 
-class NTNewTradePopup(QDialog):
+class NTNewTradePopup(QWidget):
     trade_created = pyqtSignal(int)
 
     def __init__(self, parent=None, width=None, height=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.user_id = UserSession().get_user_id()
         self.account_id = None
         self.account_name = None

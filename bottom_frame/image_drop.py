@@ -76,7 +76,7 @@ class InteractiveDropArea(QFrame):
         self.clickable = True
 
         self.layout = QHBoxLayout()
-        self.image_label = ClickableLabel(self, type='ti_ss')
+        self.image_label = ClickableLabel(self)
         self.clear_button = QPushButton('-')
         self.clear_button.setStyleSheet("""
                     QPushButton:hover {

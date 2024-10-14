@@ -83,15 +83,17 @@ def insert_account(user_id, account_name, account_type):
         return False
 
 
-def get_all_accounts(user_id):
+def get_all_accounts(user_id, account_type=None):
     try:
-        cursor.execute("SELECT account_id, account_name, account_type FROM accounts WHERE user_id = %s;", (user_id,))
+        if account_type:
+            cursor.execute("SELECT account_id, account_name, account_type FROM accounts WHERE user_id = %s AND account_type = %s;", (user_id, account_type))
+        else:
+            cursor.execute("SELECT account_id, account_name, account_type FROM accounts WHERE user_id = %s;", (user_id,))
         conn.commit()
         accounts = cursor.fetchall()
         return accounts
     except Exception as e:
         print(f'Error getting all accounts: {e}')
-
 
 def insert_trade(account_id, instrument, direction, entries, exits, entry_time, exit_time, profit, com):
     try:
@@ -453,6 +455,7 @@ def insert_daily_note(account_id, note_text, date):
         print(f"Error occurred: {e}")
 
 
+
 def update_trade_note(note_id, new_text, note_type=None):
     if len(new_text) > 500:
         raise ValueError("Note text exceeds 500 character limit")
@@ -469,6 +472,7 @@ def update_trade_note(note_id, new_text, note_type=None):
     except Exception as e:
         conn.rollback()
         print(f"Error occurred: {e}")
+
 
 
 def insert_trade_note(trade_id, note_text):
@@ -530,7 +534,6 @@ def get_trade_note(trade_id=None, account_id=None, date=None):
             return note_id, note_text, created_at
         else:
             time = date if date else ''
-            print(f"No note found for {column_name}:{time}: {id}")
             return None, None, None
     except Exception as e:
         print(f"Error occurred: {e}")
@@ -562,6 +565,30 @@ def save_trade_with_screenshots(trade_data, screenshots):
         print(f"Error saving trade with screenshots: {e}")
         return False
 
+def check_account_money_visibility(account_id):
+    try:
+        cursor.execute("""
+            SELECT money_visibility FROM accounts WHERE account_id = %s;
+        """, (account_id,))
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+        else:
+            print('Error?')
+            return None
+    except Exception as e:
+        print(f"Error retrieving data from server: {e}")
+        conn.rollback()
+        return None
+
+def update_money_visibility(account_id, visibility):
+    try:
+        query = sql.SQL(f"""UPDATE accounts SET money_visibility = %s WHERE account_id = %s;""")
+        cursor.execute(query, (visibility, account_id))
+        conn.commit()
+        print(f'Update account money visibility to: {visibility}')
+    except Exception as e:
+        print(f'Failed to update money visibility: {e}')
 
 def send_friend_request(user_id, friend_id):
     try:
@@ -696,6 +723,7 @@ def get_username_by_userid(user_ids):
     except Exception as e:
         print(f"Other error: {e}")
         return []
+
 
 
 class UserSession:
