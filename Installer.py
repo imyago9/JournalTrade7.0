@@ -17,7 +17,7 @@ user_data_dir = dirs.user_data_dir
 
 GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/imyago9/JournalTrade7.0/master/version.txt'
 JOURNALTRADE_EXE_URL = 'https://raw.githubusercontent.com/imyago9/JournalTrade7.0/master/dist/JournalTrade.exe'
-INSTALLER_EXE_URL = 'https://raw.githubusercontent.com/imyago9/JournalTrade7.0/master/dist/Installer.exe'
+INSTALLER_EXE_URL = 'https://raw.githubusercontent.com/imyago9/JournalTrade7.0/master/dist/Updater.exe'
 LOCAL_VERSION_PATH = os.path.join(user_data_dir, 'version.txt')
 LOCAL_EXE_PATH = os.path.join(user_data_dir, 'JournalTrade.exe')
 NEW_EXE_PATH = os.path.join(user_data_dir, 'JournalTrade_new.exe')
